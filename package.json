@@ -10,8 +10,16 @@
     "preview": "yarn build && yarn vite preview"
   },
   "dependencies": {
+    "axios": "^1.4.0",
+    "binance-api-node": "^0.12.6",
+    "dotenv": "^16.3.1",
+    "envalid": "^7.3.1",
+    "frappe-charts": "^1.6.2",
     "jotai": "^2.2.1",
-    "preact": "^10.15.1"
+    "mongoose": "^7.3.4",
+    "preact": "^10.15.1",
+    "react-frappe-charts": "^4.1.0",
+    "recharts": "^2.7.2"
   },
   "devDependencies": {
     "@preact/preset-vite": "^2.5.0",
