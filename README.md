@@ -1,21 +1,36 @@
-# Frontend code template in `preact`
+# Binance API Wrapper
 
-This template is to be used for frontend applications.
+This is a React application that serves as a Binance API wrapper. It fetches current ticker data from the Binance API and provides functionality to signal if there's a massive difference between the ask and bid prices for a given ticker.
 
 ## Features
 
-- State management with `jotai`
-- Around 13.53kb after brotli compression (this includes **everything**) 😱
-- `preact` under the hood with `preact/compat` makes it compatible with virtually any `react` library but still makes it faster
-- Full TypeScript support — no dangling types
-- `vite` packager and devtools make building and development lightning fast
-- `tailwind-css` built-in with 'daisyui'
-- GitHub Actions that lint and check the code on pull requests
-- `prettier` and `eslint` configured, enabled and formatting your code on save
-- List of recommended extensions for VSCode
-- It is important to keep the bundle small, so a `stats.html` file is generated on `yarn build` to visually show you the bundle size
+- Fetches current ticker data from the Binance API
+- Calculates the difference between the ask and bid prices
+- Signals if there's a massive difference between the ask and bid prices for a given ticker
 
-## Local launch
+## Prerequisites
 
-1. Install dependencies with `yarn`
-2. Run the server with `yarn start`
+Before running the application, make sure you have the following:
+
+- Node.js installed
+- A valid Binance API key and secret
+
+## Getting Started
+
+1. Clone the repository:
+   `bash git clone https://github.com/your-username/binance-api-wrapper.git`
+2. Install dependencies:
+   `bash yarn`
+3. Create a .env file in the root directory of the project and add the following:
+   `MONGO_URL=`
+4. Run the application:
+   `bash yarn start`
+5. Open your web browser and navigate to `http://localhost:3000` to view the application.
+
+## Contributing
+
+Contributions are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request.
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
