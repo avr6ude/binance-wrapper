@@ -1,7 +1,8 @@
 import { Suspense, useEffect, useMemo, useState } from 'react'
 import ReactFrappeChart from 'react-frappe-charts'
 import env from 'helpers/env'
-import getTickerData from 'helpers/binanceApi'
+import getBinanceData from 'helpers/binanceApi'
+import getTickerData, { getTradeData } from 'helpers/binanceApi'
 interface TickerData {
   bidPrice: string
   bidQty: string
@@ -28,19 +29,32 @@ export default function () {
   const [tickerData, setTickerData] = useState<OrderBook | null>(null)
   const [alert, setAlert] = useState('')
   const [overCount, setOverCount] = useState(0)
+  const [currentPrice, setCurrentPrice] = useState(0)
   const ticker = 'BTCUSDT'
 
   useEffect(() => {
     const fetchPrice = async () => {
       try {
-        const data = await getTickerData(ticker)
+        const data = await getBinanceData(ticker, 'depth')
         setTickerData(data)
       } catch (e) {
         console.error(`Error fetching price for ${ticker}: ${e}`)
       }
     }
 
+    const fetchTradeData = async () => {
+      try {
+        const trades = await getBinanceData(ticker, 'trades')
+        if (trades && trades.length > 0) {
+          setCurrentPrice(parseFloat(trades[0].price))
+        }
+      } catch (e) {
+        console.error(`Error fetching trade data for ${ticker}: ${e}`)
+      }
+    }
+
     void fetchPrice()
+    void fetchTradeData()
 
     const intervalId = setInterval(fetchPrice, 1000)
     return () => clearInterval(intervalId)
@@ -48,13 +62,22 @@ export default function () {
 
   useEffect(() => {
     const checkDifference = () => {
-      if (!tickerData) return
+      if (!tickerData || currentPrice === 0) return
 
-      const totalBids = tickerData.bids.reduce(
+      const filteredBids = tickerData.bids.filter(
+        ([price]) =>
+          Math.abs((parseFloat(price) - currentPrice) / currentPrice) <= 0.3
+      )
+      const filteredAsks = tickerData.asks.filter(
+        ([price]) =>
+          Math.abs((parseFloat(price) - currentPrice) / currentPrice) <= 0.3
+      )
+
+      const totalBids = filteredBids.reduce(
         (total, [, qty]) => total + parseFloat(qty),
         0
       )
-      const totalAsks = tickerData.asks.reduce(
+      const totalAsks = filteredAsks.reduce(
         (total, [, qty]) => total + parseFloat(qty),
         0
       )
@@ -69,10 +92,10 @@ export default function () {
       }
     }
     checkDifference()
-    const intervalId = setInterval(checkDifference, 10000)
+    const intervalId = setInterval(checkDifference, 1000)
 
     return () => clearInterval(intervalId)
-  }, [overCount, tickerData])
+  }, [currentPrice, overCount, tickerData])
 
   const chartData = useMemo(() => {
     const defaultChartData = {
@@ -102,7 +125,7 @@ export default function () {
     const combinedData = [...bids, ...asks]
 
     return {
-      labels: ['Bids', 'Asks'], //combinedData.map((item) => item.name),
+      labels: combinedData.map((item) => item.name),
       datasets: [
         {
           name: 'Bids',
@@ -127,6 +150,7 @@ export default function () {
           axisOptions={{
             xAxisMode: 'tick',
             yAxisMode: 'tick',
+            xIsSeries: 1,
           }}
           lineOptions={{
             regionFill: 1,
