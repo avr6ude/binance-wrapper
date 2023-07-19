@@ -1,7 +1,7 @@
-import { Suspense, useEffect, useState } from 'react'
+import { Suspense, useEffect, useMemo, useState } from 'react'
 import ReactFrappeChart from 'react-frappe-charts'
+import env from 'helpers/env'
 import getTickerData from 'helpers/binanceApi'
-
 interface TickerData {
   bidPrice: string
   bidQty: string
@@ -18,8 +18,16 @@ interface TickerData {
   lastId: number
 }
 
+interface OrderBook {
+  lastUpdatedId: number
+  bids: string[][]
+  asks: string[][]
+}
+
 export default function () {
-  const [tickerData, setTickerData] = useState<TickerData | null>(null)
+  const [tickerData, setTickerData] = useState<OrderBook | null>(null)
+  const [alert, setAlert] = useState('')
+  const [overCount, setOverCount] = useState(0)
   const ticker = 'BTCUSDT'
 
   useEffect(() => {
@@ -38,53 +46,94 @@ export default function () {
     return () => clearInterval(intervalId)
   }, [])
 
-  const chartData = {
-    labels: ['Open', 'High', 'Low'],
-    datasets: [
-      {
-        name: 'value',
-        values: tickerData
-          ? [
-              parseFloat(tickerData.openPrice),
-              parseFloat(tickerData.highPrice),
-              parseFloat(tickerData.lowPrice),
-            ]
-          : [],
-      },
-    ],
-  }
+  useEffect(() => {
+    const checkDifference = () => {
+      if (!tickerData) return
+
+      const totalBids = tickerData.bids.reduce(
+        (total, [, qty]) => total + parseFloat(qty),
+        0
+      )
+      const totalAsks = tickerData.asks.reduce(
+        (total, [, qty]) => total + parseFloat(qty),
+        0
+      )
+      const difference =
+        Math.abs(totalBids - totalAsks) / ((totalBids + totalAsks) / 2)
+
+      if (difference > 0.5) {
+        setOverCount((count) => count + 1)
+        setAlert(`${overCount} | ${Math.round(difference * 100)}% | ${ticker}`)
+      } else {
+        setAlert('')
+      }
+    }
+    checkDifference()
+    const intervalId = setInterval(checkDifference, 10000)
+
+    return () => clearInterval(intervalId)
+  }, [overCount, tickerData])
+
+  const chartData = useMemo(() => {
+    const defaultChartData = {
+      labels: ['Bids', 'Asks'],
+      datasets: [
+        {
+          name: 'Bids',
+          values: [0, 0],
+        },
+        {
+          name: 'Asks',
+          values: [0, 0],
+        },
+      ],
+    }
+    if (!tickerData) return defaultChartData
+
+    const bids = tickerData.bids.map(([price, qty]) => ({
+      value: qty,
+      name: price,
+    }))
+    const asks = tickerData.asks.map(([price, qty]) => ({
+      value: qty,
+      name: price,
+    }))
+
+    const combinedData = [...bids, ...asks]
+
+    return {
+      labels: ['Bids', 'Asks'], //combinedData.map((item) => item.name),
+      datasets: [
+        {
+          name: 'Bids',
+          values: bids.map((bid) => bid.value),
+        },
+        {
+          name: 'Asks',
+          values: asks.map((ask) => ask.value),
+        },
+      ],
+    }
+  }, [tickerData])
+
   return (
     <Suspense fallback={<p>Loading...</p>}>
       <div className="container mx-auto max-w-prose p-10 prose">
         <h1>{ticker} Ticker Data</h1>
-        {/* <ReactFrappeChart
+        <ReactFrappeChart
           type="line"
           height={300}
           data={chartData}
           axisOptions={{
             xAxisMode: 'tick',
             yAxisMode: 'tick',
-            xIsSeries: 1,
           }}
           lineOptions={{
             regionFill: 1,
             hideDots: 1,
           }}
-        /> */}
-        {tickerData && (
-          <div>
-            <p>Bid Price: {tickerData.bidPrice}</p>
-            <p>Bid Quantity: {tickerData.bidQty}</p>
-            <p>Ask Price: {tickerData.askPrice}</p>
-            <p>Ask Quantity: {tickerData.askQty}</p>
-            <p>Open Price: {tickerData.openPrice}</p>
-            <p>High Price: {tickerData.highPrice}</p>
-            <p>Low Price: {tickerData.lowPrice}</p>
-            <p>Volume: {tickerData.volume}</p>
-            <p>First ID: {tickerData.firstId}</p>
-            <p>Last ID: {tickerData.lastId}</p>
-          </div>
-        )}
+        />
+        {alert && <p>{alert}</p>}
       </div>
     </Suspense>
   )
