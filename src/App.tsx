@@ -1,26 +1,7 @@
-import { Suspense, useEffect, useMemo, useState } from 'react'
-import ReactFrappeChart from 'react-frappe-charts'
-import env from 'helpers/env'
+import { Suspense, useEffect, useState } from 'react'
 import getBinanceData from 'helpers/binanceApi'
-import getTickerData, { getTradeData } from 'helpers/binanceApi'
-interface TickerData {
-  bidPrice: string
-  bidQty: string
-  askPrice: string
-  askQty: string
-  openPrice: string
-  highPrice: string
-  lowPrice: string
-  volume: string
-  quoteVolume: string
-  openTime: number
-  closeTime: number
-  firstId: number
-  lastId: number
-}
 
 interface OrderBook {
-  lastUpdatedId: number
   bids: string[][]
   asks: string[][]
 }
@@ -28,8 +9,8 @@ interface OrderBook {
 export default function () {
   const [tickerData, setTickerData] = useState<OrderBook | null>(null)
   const [alert, setAlert] = useState('')
-  const [overCount, setOverCount] = useState(0)
   const [currentPrice, setCurrentPrice] = useState(0)
+
   const ticker = 'BTCUSDT'
 
   useEffect(() => {
@@ -53,14 +34,6 @@ export default function () {
       }
     }
 
-    void fetchPrice()
-    void fetchTradeData()
-
-    const intervalId = setInterval(fetchPrice, 1000)
-    return () => clearInterval(intervalId)
-  }, [])
-
-  useEffect(() => {
     const checkDifference = () => {
       if (!tickerData || currentPrice === 0) return
 
@@ -85,78 +58,29 @@ export default function () {
         Math.abs(totalBids - totalAsks) / ((totalBids + totalAsks) / 2)
 
       if (difference > 0.5) {
-        setOverCount((count) => count + 1)
-        setAlert(`${overCount} | ${Math.round(difference * 100)}% | ${ticker}`)
-      } else {
+        setAlert(`${Math.round(difference * 100)}% | ${ticker}`)
+      } else if (difference <= 0.5) {
         setAlert('')
       }
     }
+
+    void fetchPrice()
+    void fetchTradeData()
     checkDifference()
-    const intervalId = setInterval(checkDifference, 1000)
+
+    const intervalId = setInterval(() => {
+      void fetchPrice()
+      void fetchTradeData()
+      checkDifference()
+    }, 10000)
 
     return () => clearInterval(intervalId)
-  }, [currentPrice, overCount, tickerData])
-
-  const chartData = useMemo(() => {
-    const defaultChartData = {
-      labels: ['Bids', 'Asks'],
-      datasets: [
-        {
-          name: 'Bids',
-          values: [0, 0],
-        },
-        {
-          name: 'Asks',
-          values: [0, 0],
-        },
-      ],
-    }
-    if (!tickerData) return defaultChartData
-
-    const bids = tickerData.bids.map(([price, qty]) => ({
-      value: qty,
-      name: price,
-    }))
-    const asks = tickerData.asks.map(([price, qty]) => ({
-      value: qty,
-      name: price,
-    }))
-
-    const combinedData = [...bids, ...asks]
-
-    return {
-      labels: combinedData.map((item) => item.name),
-      datasets: [
-        {
-          name: 'Bids',
-          values: bids.map((bid) => bid.value),
-        },
-        {
-          name: 'Asks',
-          values: asks.map((ask) => ask.value),
-        },
-      ],
-    }
-  }, [tickerData])
+  }, [currentPrice, tickerData])
 
   return (
     <Suspense fallback={<p>Loading...</p>}>
       <div className="container mx-auto max-w-prose p-10 prose">
-        <h1>{ticker} Ticker Data</h1>
-        <ReactFrappeChart
-          type="line"
-          height={300}
-          data={chartData}
-          axisOptions={{
-            xAxisMode: 'tick',
-            yAxisMode: 'tick',
-            xIsSeries: 1,
-          }}
-          lineOptions={{
-            regionFill: 1,
-            hideDots: 1,
-          }}
-        />
+        <h1>Ticker Data</h1>
         {alert && <p>{alert}</p>}
       </div>
     </Suspense>
