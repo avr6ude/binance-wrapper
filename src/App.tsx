@@ -14,17 +14,16 @@ const AlertItem = memo(({ index, data }: ListChildComponentProps) => (
 ))
 
 export default function () {
-  const [tickerData, setTickerData] = useState<OrderBook | null>(null)
+  const [, setTickerData] = useState<OrderBook | null>(null)
   const [alerts, setAlerts] = useState<string[]>([])
   const [currentPrice, setCurrentPrice] = useState(0)
   const [filteredPairs, setFilteredPairs] = useState<string[]>([])
   const tickerIndex = useRef(0)
 
-  const {
-    data: USDTPairs,
-    isLoading,
-    error,
-  } = useQuery<BinanceSymbol[]>('USDTPairs', getUSDTPairs)
+  const { data: USDTPairs, isLoading } = useQuery<BinanceSymbol[]>(
+    'USDTPairs',
+    getUSDTPairs
+  )
 
   useEffect(() => {
     if (USDTPairs) {
