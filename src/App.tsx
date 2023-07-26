@@ -48,39 +48,6 @@ export default function () {
     return 0
   }
 
-  const checkDifference = (
-    ticker: string,
-    tickerData: OrderBook,
-    currentPrice: number
-  ) => {
-    if (!tickerData || currentPrice === 0) return
-
-    const filteredBids = tickerData.bids.filter(
-      ([price]) =>
-        Math.abs((parseFloat(price) - currentPrice) / currentPrice) <= 0.3
-    )
-    const filteredAsks = tickerData.asks.filter(
-      ([price]) =>
-        Math.abs((parseFloat(price) - currentPrice) / currentPrice) <= 0.3
-    )
-
-    const totalBids = filteredBids.reduce(
-      (total, [, qty]) => total + parseFloat(qty),
-      0
-    )
-    const totalAsks = filteredAsks.reduce(
-      (total, [, qty]) => total + parseFloat(qty),
-      0
-    )
-    const difference =
-      Math.abs(totalBids - totalAsks) / ((totalBids + totalAsks) / 2)
-
-    if (difference > 0.5) {
-      const newAlert = `${Math.round(difference * 100)}% | ${ticker}`
-      setAlerts((prevAlerts) => Array.from(new Set([...prevAlerts, newAlert])))
-    }
-  }
-
   const fetchTickerData = useCallback(async () => {
     const ticker = filteredPairs[tickerIndex.current]
     let newAlerts = [...alerts]
