@@ -2,7 +2,7 @@ import axios from 'axios'
 
 const BASE_URL = 'https://api.binance.com'
 
-interface BinanceSymbol {
+export interface BinanceSymbol {
   symbol: string
   quoteAsset: string
   baseAsset: string
@@ -20,7 +20,7 @@ export default async function getBinanceData(symbol: string, endpoint: string) {
   }
 }
 
-export async function getUSDTPairs() {
+export async function getUSDTPairs(): Promise<BinanceSymbol[]> {
   try {
     const res = await axios.get(`${BASE_URL}/api/v3/exchangeInfo`)
     const symbols: BinanceSymbol[] = res.data.symbols

@@ -1,7 +1,8 @@
 import { FixedSizeList as List, ListChildComponentProps } from 'react-window'
 import { Suspense, memo, useCallback, useEffect, useRef, useState } from 'react'
+import { useQuery } from 'react-query'
 import excludedPairs from 'data/excludedPairs'
-import getBinanceData, { getUSDTPairs } from 'helpers/binanceApi'
+import getBinanceData, { BinanceSymbol, getUSDTPairs } from 'helpers/binanceApi'
 
 interface OrderBook {
   bids: string[][]
@@ -19,12 +20,21 @@ export default function () {
   const [filteredPairs, setFilteredPairs] = useState<string[]>([])
   const tickerIndex = useRef(0)
 
-  const fetchPairs = async () => {
-    const USDTPairs = await getUSDTPairs()
-    const pairs = USDTPairs.map((pair) => pair.symbol)
-    const filtered = pairs.filter((pair) => !excludedPairs.includes(pair))
-    setFilteredPairs(filtered)
-  }
+  const {
+    data: USDTPairs,
+    isLoading,
+    error,
+  } = useQuery<BinanceSymbol[]>('USDTPairs', getUSDTPairs)
+
+  useEffect(() => {
+    if (USDTPairs) {
+      const pairs = USDTPairs.map((pair: { symbol: string }) => pair.symbol)
+      const filtered = pairs.filter(
+        (pair: string) => !excludedPairs.includes(pair)
+      )
+      setFilteredPairs(filtered)
+    }
+  }, [USDTPairs])
 
   const fetchPrice = async (ticker: string): Promise<OrderBook> => {
     try {
@@ -40,7 +50,9 @@ export default function () {
     try {
       const trades = await getBinanceData(ticker, 'trades')
       if (trades && trades.length > 0) {
-        setCurrentPrice(parseFloat(trades[0].price))
+        const price = parseFloat(trades[0].price)
+        setCurrentPrice(price)
+        return price
       }
     } catch (e) {
       console.error(`Error fetching trade data for ${ticker}: ${e}`)
@@ -49,6 +61,7 @@ export default function () {
   }
 
   const fetchTickerData = useCallback(async () => {
+    console.log('fetchTickerData called')
     const ticker = filteredPairs[tickerIndex.current]
     let newAlerts = [...alerts]
     if (ticker) {
@@ -56,11 +69,15 @@ export default function () {
         fetchPrice(ticker),
         fetchTradeData(ticker),
       ])
+      console.log(data, price)
       setTickerData(data)
       setCurrentPrice(price)
       tickerIndex.current = (tickerIndex.current + 1) % filteredPairs.length
 
-      if (!data || price === 0) return
+      if (!data || price === 0) {
+        console.log(`No data for ${ticker}`)
+        return
+      }
 
       const filteredBids = data.bids.filter(
         ([price]) =>
@@ -83,6 +100,7 @@ export default function () {
         Math.abs(totalBids - totalAsks) / ((totalBids + totalAsks) / 2)
 
       if (difference > 0.5) {
+        console.log('difference is over 0.5')
         const newAlert = `${Math.round(difference * 100)}% | ${ticker}`
         newAlerts = Array.from(new Set([...newAlerts, newAlert]))
       }
@@ -91,15 +109,11 @@ export default function () {
   }, [filteredPairs, alerts, currentPrice])
 
   useEffect(() => {
-    void fetchPairs()
-  }, [])
-
-  useEffect(() => {
-    if (filteredPairs.length > 0) {
-      const intervalId = setInterval(fetchTickerData, 60 * 60 * 1000)
+    if (!isLoading && filteredPairs.length > 0) {
+      const intervalId = setInterval(fetchTickerData, 500)
       return () => clearInterval(intervalId)
     }
-  }, [filteredPairs, fetchTickerData])
+  }, [filteredPairs, fetchTickerData, isLoading])
 
   return (
     <Suspense fallback={<p>Loading...</p>}>
